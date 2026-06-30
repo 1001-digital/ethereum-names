@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "One clean API to resolve Ethereum names across ENS and the Gwei Name Service (GNS), powered by viem.",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -63,6 +66,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@changesets/changelog-github": "^0.5.1",
     "@changesets/cli": "^2.30.0",
     "@types/node": "^22.19.11",
     "tsup": "^8.5.0",
