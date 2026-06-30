@@ -1,7 +1,7 @@
 import { GNS_CONTRACT, gnsAbi, normalizeName } from '@donnoh/gns-utils'
 import { type Address, getAddress, isAddressEqual, zeroAddress } from 'viem'
-import { readContract } from 'viem/actions'
 import type { PublicClient } from 'viem'
+import { readContract } from 'viem/actions'
 
 /** The canonical GNS contract (same address on mainnet and Sepolia). */
 export const DEFAULT_GNS_CONTRACT = GNS_CONTRACT as Address

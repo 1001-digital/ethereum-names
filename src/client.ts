@@ -1,13 +1,6 @@
-import {
-  type Address,
-  createPublicClient,
-  getAddress,
-  http,
-  isAddress,
-  isAddressEqual,
-} from 'viem'
-import { mainnet } from 'viem/chains'
 import { normalizeName } from '@donnoh/gns-utils'
+import { http, type Address, createPublicClient, getAddress, isAddress, isAddressEqual } from 'viem'
+import { mainnet } from 'viem/chains'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
 import { DEFAULT_GNS_CONTRACT, gnsResolve, gnsReverse, gnsText } from './gns.js'
 import type {

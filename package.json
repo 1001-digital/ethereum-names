@@ -35,6 +35,8 @@
     "format": "biome check --write src",
     "check": "biome check src && tsc --noEmit",
     "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [
@@ -74,5 +76,8 @@
     "typescript": "~5.8.3",
     "viem": "^2.45.3"
   },
-  "packageManager": "pnpm@10.30.0"
+  "packageManager": "pnpm@10.30.0",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@biomejs/biome"]
+  }
 }
