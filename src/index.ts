@@ -6,4 +6,5 @@ export type {
   EthereumNamesConfig,
   NameSystem,
   ResolvedName,
+  ReverseNames,
 } from './types.js'

@@ -1,9 +1,22 @@
-import { type Address, createPublicClient, getAddress, http, isAddress } from 'viem'
+import {
+  type Address,
+  createPublicClient,
+  getAddress,
+  http,
+  isAddress,
+  isAddressEqual,
+} from 'viem'
 import { mainnet } from 'viem/chains'
 import { normalizeName } from '@donnoh/gns-utils'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
 import { DEFAULT_GNS_CONTRACT, gnsResolve, gnsReverse, gnsText } from './gns.js'
-import type { EthereumNames, EthereumNamesConfig, NameSystem, ResolvedName } from './types.js'
+import type {
+  EthereumNames,
+  EthereumNamesConfig,
+  NameSystem,
+  ResolvedName,
+  ReverseNames,
+} from './types.js'
 import { detectSystem, safeNormalizeEns } from './utils.js'
 
 /**
@@ -40,6 +53,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
 
   const gnsContract = config.gnsContract ?? DEFAULT_GNS_CONTRACT
   const reversePriority: NameSystem[] = config.reversePriority ?? ['ens', 'gns']
+  const verify = config.verify ?? true
 
   /** Canonical form of a name for a given system. */
   function canonical(name: string, system: NameSystem | null): string | null {
@@ -57,13 +71,22 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
     }
   }
 
-  async function reverseFor(system: NameSystem, address: Address): Promise<string | null> {
+  async function rawReverse(system: NameSystem, address: Address): Promise<string | null> {
     try {
       if (system === 'ens') return await ensReverse(client, address)
       return await gnsReverse(client, gnsContract, address)
     } catch {
       return null
     }
+  }
+
+  /** Reverse resolve for a single system, forward-verifying the result when enabled. */
+  async function reverseFor(system: NameSystem, address: Address): Promise<string | null> {
+    const name = await rawReverse(system, address)
+    if (!name) return null
+    if (!verify) return name
+    const forward = await resolveName(name, system)
+    return forward && isAddressEqual(forward, address) ? name : null
   }
 
   return {
@@ -89,6 +112,16 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
         if (name) return name
       }
       return null
+    },
+
+    async reverseAll(address): Promise<ReverseNames> {
+      if (!isAddress(address)) return { ens: null, gns: null }
+      const checksummed = getAddress(address)
+      const [ens, gns] = await Promise.all([
+        reverseFor('ens', checksummed),
+        reverseFor('gns', checksummed),
+      ])
+      return { ens, gns }
     },
 
     async lookup(input): Promise<ResolvedName> {

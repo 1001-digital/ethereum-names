@@ -32,6 +32,10 @@ await names.resolve('0xd8dA...')      // address → returned checksummed
 await names.reverse('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
 // => 'vitalik.eth' | 'alice.gwei' | null
 
+// Reverse across BOTH systems at once (when an address has names in each)
+await names.reverseAll('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
+// => { ens: 'vitalik.eth', gns: 'vitalik.gwei' }
+
 // Rich lookup: resolve or reverse, and learn which system answered
 await names.lookup('alice.gwei')
 // => { input: 'alice.gwei', name: 'alice.gwei', address: '0x...', system: 'gns' }
@@ -55,7 +59,13 @@ names.system('foo.eth')    // 'ens'
 | `0x…` address               | passed through (checksummed) |
 
 Reverse lookups try each system in order (ENS first by default) and return the first
-match. Configure the order with `reversePriority`.
+match. Configure the order with `reversePriority`, or use `reverseAll` to get the primary
+name from **both** systems at once.
+
+By default, reverse lookups are **forward-verified**: after reading an address's primary
+name, the library resolves that name back and confirms it points to the same address
+before trusting it. This guards against spoofed reverse records (ENS reverse records are
+not self-validating). Disable with `verify: false` to save a round-trip.
 
 ## Configuration
 
@@ -82,6 +92,7 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
 | `chain`           | `Chain`               | Chain used when no `client` is given. Defaults to `mainnet`.         |
 | `gnsContract`     | `Address`             | Override the GNS contract address.                                   |
 | `reversePriority` | `('ens' \| 'gns')[]`  | Order reverse lookups try each system. Defaults to `['ens', 'gns']`. |
+| `verify`          | `boolean`             | Forward-verify reverse lookups before trusting them. Defaults to `true`. |
 
 > **Note:** ENS resolution relies on viem's ENS actions, which require a chain with ENS
 > contracts configured (such as `mainnet`). GNS is live at the same address on Ethereum
@@ -95,6 +106,7 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
 | ----------------------- | ----------------------------- | ------------------------------------------------------- |
 | `resolve(nameOrAddress)`| `Promise<Address \| null>`    | Name → address. Addresses pass through, checksummed.    |
 | `reverse(address)`      | `Promise<string \| null>`     | Address → primary name across systems.                  |
+| `reverseAll(address)`   | `Promise<ReverseNames>`       | Address → `{ ens, gns }` primary names from both systems.|
 | `lookup(input)`         | `Promise<ResolvedName>`       | Resolve or reverse, with the answering `system`.        |
 | `getAvatar(name)`       | `Promise<string \| null>`     | Avatar record (ENS avatar, or GNS `avatar` text).       |
 | `getText(name, key)`    | `Promise<string \| null>`     | Arbitrary text record.                                  |
@@ -102,7 +114,7 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
 | `client`                | `PublicClient`                | The underlying viem client.                             |
 
 Also exported: `detectSystem(name)`, `DEFAULT_GNS_CONTRACT`, and the types
-`EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`.
+`EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`, `ReverseNames`.
 
 ## Credits
 

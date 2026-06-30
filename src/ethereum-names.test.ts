@@ -32,6 +32,11 @@ test('reverse rejects non-addresses', async () => {
   assert.equal(await names.reverse('not-an-address'), null)
 })
 
+test('reverseAll rejects non-addresses with an empty result', async () => {
+  const names = createEthereumNames()
+  assert.deepEqual(await names.reverseAll('not-an-address'), { ens: null, gns: null })
+})
+
 test('lookup of an address echoes the checksummed address', async () => {
   // reversePriority [] skips any network lookups, isolating the address handling
   const names = createEthereumNames({ reversePriority: [] })
