@@ -1,0 +1,74 @@
+{
+  "name": "@1001-digital/ethereum-names",
+  "version": "0.1.0",
+  "description": "One clean API to resolve Ethereum names across ENS and the Gwei Name Service (GNS), powered by viem.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "lint": "biome check src",
+    "format": "biome check --write src",
+    "check": "biome check src && tsc --noEmit",
+    "changeset": "changeset",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "ethereum",
+    "ens",
+    "gns",
+    "gwei",
+    "gwei-name-service",
+    "name-service",
+    "resolver",
+    "viem",
+    "web3"
+  ],
+  "author": "jalil.eth",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1001-digital/ethereum-names.git"
+  },
+  "bugs": {
+    "url": "https://github.com/1001-digital/ethereum-names/issues"
+  },
+  "homepage": "https://github.com/1001-digital/ethereum-names#readme",
+  "dependencies": {
+    "@donnoh/gns-utils": "^0.2.0"
+  },
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.30.0",
+    "@types/node": "^22.19.11",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.3",
+    "viem": "^2.45.3"
+  },
+  "packageManager": "pnpm@10.30.0"
+}
