@@ -16,7 +16,7 @@ export function detectSystem(input: string): NameSystem | null {
   if (value.endsWith('.wei')) return 'wns'
   if (value.endsWith('.gwei')) return 'gns'
   if (value.includes('.')) return 'ens'
-  // A bare label is treated as a `.gwei` name, matching @donnoh/gns-utils.
+  // A bare label is treated as a `.gwei` name, matching the GNS convention.
   return 'gns'
 }
 

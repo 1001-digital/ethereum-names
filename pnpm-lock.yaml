@@ -7,13 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      '@donnoh/gns-utils':
-        specifier: ^0.2.0
-        version: 0.2.0
-      wns-utils:
-        specifier: ^0.2.1
-        version: 0.2.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.4
@@ -166,9 +159,6 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
-
-  '@donnoh/gns-utils@0.2.0':
-    resolution: {integrity: sha512-IGXkNNRCiiW7Bkinb+m8szV8/Y0WTtVksCQICr7ie672r69lfRQF61Vj2U1SfdMjRbVh1lcP3uyTyX5I/Cv36Q==}
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -1238,9 +1228,6 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
-  wns-utils@0.2.1:
-    resolution: {integrity: sha512-gZY1oM4vpusuy5KrtixBmHzkduT+r2rJ3j2Ixh50aQlRxxs7m/yOZMG3fhFeu62IVF7312i9uQyKmju+zAMNxg==}
-
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
     engines: {node: '>=10.0.0'}
@@ -1451,8 +1438,6 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.2.0
       prettier: 2.8.8
-
-  '@donnoh/gns-utils@0.2.0': {}
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
@@ -2304,7 +2289,5 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
-
-  wns-utils@0.2.1: {}
 
   ws@8.20.1: {}

@@ -1,9 +1,14 @@
-import { normalizeName as gnsNormalizeName } from '@donnoh/gns-utils'
 import { http, type Address, createPublicClient, getAddress, isAddress, isAddressEqual } from 'viem'
 import { mainnet } from 'viem/chains'
-import { normalizeName as wnsNormalizeName } from 'wns-utils'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
-import { DEFAULT_GNS_CONTRACT, gnsResolve, gnsReverse, gnsText } from './gns.js'
+import {
+  DEFAULT_GNS_CONTRACT,
+  DEFAULT_WNS_CONTRACT,
+  normalizeName,
+  nsResolve,
+  nsReverse,
+  nsText,
+} from './name-service.js'
 import type {
   EthereumNames,
   EthereumNamesConfig,
@@ -12,7 +17,6 @@ import type {
   ReverseNames,
 } from './types.js'
 import { detectSystem, safeNormalizeEns } from './utils.js'
-import { DEFAULT_WNS_CONTRACT, wnsResolve, wnsReverse, wnsText } from './wns.js'
 
 /**
  * Create a unified ENS + GNS + WNS name client.
@@ -47,24 +51,27 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
       transport: http(config.rpcUrl),
     })
 
-  const gnsContract = config.gnsContract ?? DEFAULT_GNS_CONTRACT
-  const wnsContract = config.wnsContract ?? DEFAULT_WNS_CONTRACT
   const reversePriority: NameSystem[] = config.reversePriority ?? ['ens', 'gns', 'wns']
   const verify = config.verify ?? true
 
+  /** GNS and WNS share a registry interface — only the contract and suffix differ. */
+  const registries = {
+    gns: { contract: config.gnsContract ?? DEFAULT_GNS_CONTRACT, suffix: '.gwei' },
+    wns: { contract: config.wnsContract ?? DEFAULT_WNS_CONTRACT, suffix: '.wei' },
+  } as const
+
   /** Canonical form of a name for a given system. */
   function canonical(name: string, system: NameSystem | null): string | null {
-    if (system === 'gns') return gnsNormalizeName(name)
-    if (system === 'wns') return wnsNormalizeName(name)
     if (system === 'ens') return safeNormalizeEns(name)
+    if (system === 'gns' || system === 'wns') return normalizeName(name, registries[system].suffix)
     return null
   }
 
   async function resolveName(name: string, system: NameSystem): Promise<Address | null> {
     try {
       if (system === 'ens') return await ensResolve(client, name)
-      if (system === 'wns') return await wnsResolve(client, wnsContract, name)
-      return await gnsResolve(client, gnsContract, name)
+      const { contract, suffix } = registries[system]
+      return await nsResolve(client, contract, name, suffix)
     } catch {
       return null
     }
@@ -73,8 +80,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
   async function rawReverse(system: NameSystem, address: Address): Promise<string | null> {
     try {
       if (system === 'ens') return await ensReverse(client, address)
-      if (system === 'wns') return await wnsReverse(client, wnsContract, address)
-      return await gnsReverse(client, gnsContract, address)
+      return await nsReverse(client, registries[system].contract, address)
     } catch {
       return null
     }
@@ -145,8 +151,10 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
       const system = detectSystem(name)
       try {
         if (system === 'ens') return await ensAvatar(client, name)
-        if (system === 'gns') return await gnsText(client, gnsContract, name, 'avatar')
-        if (system === 'wns') return await wnsText(client, wnsContract, name, 'avatar')
+        if (system === 'gns' || system === 'wns') {
+          const { contract, suffix } = registries[system]
+          return await nsText(client, contract, name, 'avatar', suffix)
+        }
       } catch {
         return null
       }
@@ -157,8 +165,10 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
       const system = detectSystem(name)
       try {
         if (system === 'ens') return await ensText(client, name, key)
-        if (system === 'gns') return await gnsText(client, gnsContract, name, key)
-        if (system === 'wns') return await wnsText(client, wnsContract, name, key)
+        if (system === 'gns' || system === 'wns') {
+          const { contract, suffix } = registries[system]
+          return await nsText(client, contract, name, key, suffix)
+        }
       } catch {
         return null
       }
