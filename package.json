@@ -63,10 +63,6 @@
     "url": "https://github.com/1001-digital/ethereum-names/issues"
   },
   "homepage": "https://github.com/1001-digital/ethereum-names#readme",
-  "dependencies": {
-    "@donnoh/gns-utils": "^0.2.0",
-    "wns-utils": "^0.2.1"
-  },
   "peerDependencies": {
     "viem": "^2.0.0"
   },

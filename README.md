@@ -122,9 +122,13 @@ types `EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`, `Rev
 
 ## Credits
 
-GNS resolution builds on [`@donnoh/gns-utils`](https://www.npmjs.com/package/@donnoh/gns-utils)
-by [lucadonnoh](https://github.com/lucadonnoh/gwei-names). WNS resolution builds on
-[`wns-utils`](https://www.npmjs.com/package/wns-utils) by [NaniDAO](https://github.com/NaniDAO/wns-utils).
+GNS and WNS resolve against immutable mainnet registries; this library talks to them
+directly with a minimal ABI, so it ships with **zero runtime dependencies** (viem is a
+peer dependency). The registry interfaces come from
+[`@donnoh/gns-utils`](https://www.npmjs.com/package/@donnoh/gns-utils) by
+[lucadonnoh](https://github.com/lucadonnoh/gwei-names) and
+[`wns-utils`](https://www.npmjs.com/package/wns-utils) by
+[NaniDAO](https://github.com/NaniDAO/wns-utils).
 
 ## License
 
