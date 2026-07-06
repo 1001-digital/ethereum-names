@@ -27,7 +27,7 @@ const names = createEthereumNames()
 await names.resolve('vitalik.eth')    // ENS → '0xd8dA...' | null
 await names.resolve('alice.gwei')     // GNS → '0x...'    | null
 await names.resolve('alice.wei')      // WNS → '0x...'    | null
-await names.resolve('alice')          // bare label → treated as alice.gwei
+await names.resolve('alice')          // bare label → ENS by default (see bareLabel)
 await names.resolve('0xd8dA...')      // address → returned checksummed
 
 // Reverse: address → primary name (tries ENS, then GNS, then WNS)
@@ -58,9 +58,15 @@ names.system('foo.eth')    // 'ens'
 | --------------------------- | ------ |
 | `*.wei`                     | WNS    |
 | `*.gwei`                    | GNS    |
-| bare label (no dot)         | GNS    |
 | any other dotted name `*.eth`, `*.box`, … | ENS |
+| bare label (no dot)         | `bareLabel` option (default ENS) |
 | `0x…` address               | passed through (checksummed) |
+
+A bare label like `alice` is ambiguous — GNS (`.gwei`) and WNS (`.wei`) both accept bare
+labels, and they can point to different owners. Rather than guess, it resolves against the
+`bareLabel` system, which defaults to `ens`. Since ENS has no bare-label namespace, bare
+labels resolve to `null` by default; set `bareLabel: 'gns'` or `'wns'` to opt a label like
+`alice` into that registry.
 
 Reverse lookups try each system in order (ENS first by default) and return the first
 match. Configure the order with `reversePriority`, or use `reverseAll` to get the primary
@@ -87,6 +93,10 @@ const quick = createEthereumNames({ rpcUrl: 'https://my-rpc' })
 
 // Prefer GNS names on reverse lookups
 const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens', 'wns'] })
+
+// Treat bare labels (e.g. `alice`) as `.gwei` names
+const gwei = createEthereumNames({ bareLabel: 'gns' })
+await gwei.resolve('alice') // → resolves alice.gwei
 ```
 
 | Option            | Type                  | Description                                                           |
@@ -96,6 +106,7 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens', 'wns'] })
 | `chain`           | `Chain`               | Chain used when no `client` is given. Defaults to `mainnet`.         |
 | `gnsContract`     | `Address`             | Override the GNS contract address.                                   |
 | `wnsContract`     | `Address`             | Override the WNS contract address.                                   |
+| `bareLabel`       | `'ens' \| 'gns' \| 'wns'` | System a bare label (no dot) resolves against. Defaults to `'ens'`. |
 | `reversePriority` | `('ens' \| 'gns' \| 'wns')[]` | Order reverse lookups try each system. Defaults to `['ens', 'gns', 'wns']`. |
 | `verify`          | `boolean`             | Forward-verify reverse lookups before trusting them. Defaults to `true`. |
 

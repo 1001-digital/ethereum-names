@@ -6,18 +6,20 @@ import type { NameSystem } from './types.js'
  * network calls.
  *
  * - `*.wei` → `wns`
- * - `*.gwei` and bare labels (no dot) → `gns`
+ * - `*.gwei` → `gns`
  * - any other dotted name (`*.eth`, `*.box`, …) → `ens`
+ * - a bare label (no dot) → `bareLabel` (default `'ens'`), since it is
+ *   ambiguous between the GNS/WNS bare-label namespaces
  * - empty input → `null`
  */
-export function detectSystem(input: string): NameSystem | null {
+export function detectSystem(input: string, bareLabel: NameSystem = 'ens'): NameSystem | null {
   const value = input.trim().toLowerCase()
   if (!value) return null
   if (value.endsWith('.wei')) return 'wns'
   if (value.endsWith('.gwei')) return 'gns'
   if (value.includes('.')) return 'ens'
-  // A bare label is treated as a `.gwei` name, matching the GNS convention.
-  return 'gns'
+  // A bare label (no dot) is ambiguous across systems; route it per config.
+  return bareLabel
 }
 
 /** Normalize an ENS name (ENSIP-15), returning `null` if it is invalid. */

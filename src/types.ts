@@ -40,6 +40,14 @@ export interface EthereumNamesConfig {
   gnsContract?: Address
   /** Override the WNS contract address. Defaults to the canonical deployment. */
   wnsContract?: Address
+  /**
+   * Which system a bare label (no dot, e.g. `alice`) is resolved against.
+   * Bare labels are ambiguous — GNS (`.gwei`) and WNS (`.wei`) both accept
+   * them — so this picks one deterministically instead of guessing an owner.
+   * Defaults to `'ens'`; note ENS has no bare-label namespace, so bare labels
+   * resolve to `null` unless you set this to `'gns'` or `'wns'`.
+   */
+  bareLabel?: NameSystem
   /** Order in which reverse lookups try each system. Defaults to `['ens', 'gns', 'wns']`. */
   reversePriority?: NameSystem[]
   /**

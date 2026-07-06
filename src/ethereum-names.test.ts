@@ -13,17 +13,26 @@ test('detectSystem routes names to the right system', () => {
   assert.equal(detectSystem('ALICE.WEI'), 'wns')
   // .gwei must not be mistaken for .wei
   assert.equal(detectSystem('gm.gwei'), 'gns')
-  // bare labels are treated as .gwei
-  assert.equal(detectSystem('alice'), 'gns')
+  // bare labels default to ENS, and route to the configured system otherwise
+  assert.equal(detectSystem('alice'), 'ens')
+  assert.equal(detectSystem('alice', 'gns'), 'gns')
+  assert.equal(detectSystem('alice', 'wns'), 'wns')
+  // suffixed names ignore the bareLabel override
+  assert.equal(detectSystem('alice.wei', 'gns'), 'wns')
   assert.equal(detectSystem(''), null)
   assert.equal(detectSystem('   '), null)
 })
 
-test('system() mirrors detectSystem without a network call', () => {
+test('system() mirrors detectSystem, honoring bareLabel config', () => {
   const names = createEthereumNames()
   assert.equal(names.system('vitalik.eth'), 'ens')
   assert.equal(names.system('alice.gwei'), 'gns')
   assert.equal(names.system('alice.wei'), 'wns')
+  // bare label defaults to ENS
+  assert.equal(names.system('alice'), 'ens')
+  // …and follows the bareLabel option
+  assert.equal(createEthereumNames({ bareLabel: 'gns' }).system('alice'), 'gns')
+  assert.equal(createEthereumNames({ bareLabel: 'wns' }).system('alice'), 'wns')
 })
 
 test('resolve passes addresses through, checksummed', async () => {

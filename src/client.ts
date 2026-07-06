@@ -53,6 +53,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
 
   const reversePriority: NameSystem[] = config.reversePriority ?? ['ens', 'gns', 'wns']
   const verify = config.verify ?? true
+  const bareLabel: NameSystem = config.bareLabel ?? 'ens'
 
   /** GNS and WNS share a registry interface — only the contract and suffix differ. */
   const registries = {
@@ -99,13 +100,13 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
     client,
 
     system(name) {
-      return detectSystem(name)
+      return detectSystem(name, bareLabel)
     },
 
     async resolve(nameOrAddress) {
       if (!nameOrAddress) return null
       if (isAddress(nameOrAddress)) return getAddress(nameOrAddress)
-      const system = detectSystem(nameOrAddress)
+      const system = detectSystem(nameOrAddress, bareLabel)
       if (!system) return null
       return resolveName(nameOrAddress, system)
     },
@@ -141,14 +142,14 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
         return { input, name: null, address, system: null }
       }
 
-      const system = detectSystem(input)
+      const system = detectSystem(input, bareLabel)
       if (!system) return { input, name: null, address: null, system: null }
       const address = await resolveName(input, system)
       return { input, name: canonical(input, system), address, system }
     },
 
     async getAvatar(name) {
-      const system = detectSystem(name)
+      const system = detectSystem(name, bareLabel)
       try {
         if (system === 'ens') return await ensAvatar(client, name)
         if (system === 'gns' || system === 'wns') {
@@ -162,7 +163,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
     },
 
     async getText(name, key) {
-      const system = detectSystem(name)
+      const system = detectSystem(name, bareLabel)
       try {
         if (system === 'ens') return await ensText(client, name, key)
         if (system === 'gns' || system === 'wns') {
