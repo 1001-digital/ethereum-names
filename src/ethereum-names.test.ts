@@ -9,6 +9,10 @@ test('detectSystem routes names to the right system', () => {
   assert.equal(detectSystem('foo.box'), 'ens')
   assert.equal(detectSystem('alice.gwei'), 'gns')
   assert.equal(detectSystem('ALICE.GWEI'), 'gns')
+  assert.equal(detectSystem('alice.wei'), 'wns')
+  assert.equal(detectSystem('ALICE.WEI'), 'wns')
+  // .gwei must not be mistaken for .wei
+  assert.equal(detectSystem('gm.gwei'), 'gns')
   // bare labels are treated as .gwei
   assert.equal(detectSystem('alice'), 'gns')
   assert.equal(detectSystem(''), null)
@@ -19,6 +23,7 @@ test('system() mirrors detectSystem without a network call', () => {
   const names = createEthereumNames()
   assert.equal(names.system('vitalik.eth'), 'ens')
   assert.equal(names.system('alice.gwei'), 'gns')
+  assert.equal(names.system('alice.wei'), 'wns')
 })
 
 test('resolve passes addresses through, checksummed', async () => {
@@ -34,7 +39,11 @@ test('reverse rejects non-addresses', async () => {
 
 test('reverseAll rejects non-addresses with an empty result', async () => {
   const names = createEthereumNames()
-  assert.deepEqual(await names.reverseAll('not-an-address'), { ens: null, gns: null })
+  assert.deepEqual(await names.reverseAll('not-an-address'), {
+    ens: null,
+    gns: null,
+    wns: null,
+  })
 })
 
 test('lookup of an address echoes the checksummed address', async () => {

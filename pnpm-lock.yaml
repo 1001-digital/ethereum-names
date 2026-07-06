@@ -11,6 +11,9 @@ importers:
       '@donnoh/gns-utils':
         specifier: ^0.2.0
         version: 0.2.0
+      wns-utils:
+        specifier: ^0.2.1
+        version: 0.2.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.4
@@ -1235,6 +1238,9 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
+  wns-utils@0.2.1:
+    resolution: {integrity: sha512-gZY1oM4vpusuy5KrtixBmHzkduT+r2rJ3j2Ixh50aQlRxxs7m/yOZMG3fhFeu62IVF7312i9uQyKmju+zAMNxg==}
+
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
     engines: {node: '>=10.0.0'}
@@ -2298,5 +2304,7 @@ snapshots:
   which@2.0.2:
     dependencies:
       isexe: 2.0.0
+
+  wns-utils@0.2.1: {}
 
   ws@8.20.1: {}

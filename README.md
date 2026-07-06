@@ -1,11 +1,12 @@
 # @1001-digital/ethereum-names
 
-One clean, [viem](https://viem.sh)-powered API to resolve Ethereum names across both
-[ENS](https://ens.domains) and the [Gwei Name Service](https://gwei.domains) (GNS).
+One clean, [viem](https://viem.sh)-powered API to resolve Ethereum names across
+[ENS](https://ens.domains), the [Gwei Name Service](https://gwei.domains) (GNS), and the
+[Wei Name Service](https://wei.domains) (WNS).
 
-Point it at a name — `vitalik.eth` or `alice.gwei` — and it figures out which system to
-ask. Point it at an address and it gives you back the primary name. No branching in your
-app code.
+Point it at a name — `vitalik.eth`, `alice.gwei`, or `alice.wei` — and it figures out which
+system to ask. Point it at an address and it gives you back the primary name. No branching
+in your app code.
 
 ## Install
 
@@ -25,27 +26,29 @@ const names = createEthereumNames()
 // Forward: name → address (the system is detected from the name)
 await names.resolve('vitalik.eth')    // ENS → '0xd8dA...' | null
 await names.resolve('alice.gwei')     // GNS → '0x...'    | null
+await names.resolve('alice.wei')      // WNS → '0x...'    | null
 await names.resolve('alice')          // bare label → treated as alice.gwei
 await names.resolve('0xd8dA...')      // address → returned checksummed
 
-// Reverse: address → primary name (tries ENS, then GNS)
+// Reverse: address → primary name (tries ENS, then GNS, then WNS)
 await names.reverse('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
-// => 'vitalik.eth' | 'alice.gwei' | null
+// => 'vitalik.eth' | 'alice.gwei' | 'alice.wei' | null
 
-// Reverse across BOTH systems at once (when an address has names in each)
+// Reverse across ALL systems at once (when an address has names in each)
 await names.reverseAll('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
-// => { ens: 'vitalik.eth', gns: 'vitalik.gwei' }
+// => { ens: 'vitalik.eth', gns: 'vitalik.gwei', wns: 'vitalik.wei' }
 
 // Rich lookup: resolve or reverse, and learn which system answered
-await names.lookup('alice.gwei')
-// => { input: 'alice.gwei', name: 'alice.gwei', address: '0x...', system: 'gns' }
+await names.lookup('alice.wei')
+// => { input: 'alice.wei', name: 'alice.wei', address: '0x...', system: 'wns' }
 
-// Records work across both systems
+// Records work across all systems
 await names.getAvatar('vitalik.eth')
-await names.getText('alice.gwei', 'url')
+await names.getText('alice.wei', 'url')
 
 // Pure, offline system detection
 names.system('alice.gwei') // 'gns'
+names.system('alice.wei')  // 'wns'
 names.system('foo.eth')    // 'ens'
 ```
 
@@ -53,6 +56,7 @@ names.system('foo.eth')    // 'ens'
 
 | Input                       | System |
 | --------------------------- | ------ |
+| `*.wei`                     | WNS    |
 | `*.gwei`                    | GNS    |
 | bare label (no dot)         | GNS    |
 | any other dotted name `*.eth`, `*.box`, … | ENS |
@@ -60,7 +64,7 @@ names.system('foo.eth')    // 'ens'
 
 Reverse lookups try each system in order (ENS first by default) and return the first
 match. Configure the order with `reversePriority`, or use `reverseAll` to get the primary
-name from **both** systems at once.
+name from **all** systems at once.
 
 By default, reverse lookups are **forward-verified**: after reading an address's primary
 name, the library resolves that name back and confirms it points to the same address
@@ -82,7 +86,7 @@ const names = createEthereumNames({ client })
 const quick = createEthereumNames({ rpcUrl: 'https://my-rpc' })
 
 // Prefer GNS names on reverse lookups
-const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
+const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens', 'wns'] })
 ```
 
 | Option            | Type                  | Description                                                           |
@@ -91,12 +95,12 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
 | `rpcUrl`          | `string`              | RPC endpoint used when no `client` is given.                         |
 | `chain`           | `Chain`               | Chain used when no `client` is given. Defaults to `mainnet`.         |
 | `gnsContract`     | `Address`             | Override the GNS contract address.                                   |
-| `reversePriority` | `('ens' \| 'gns')[]`  | Order reverse lookups try each system. Defaults to `['ens', 'gns']`. |
+| `wnsContract`     | `Address`             | Override the WNS contract address.                                   |
+| `reversePriority` | `('ens' \| 'gns' \| 'wns')[]` | Order reverse lookups try each system. Defaults to `['ens', 'gns', 'wns']`. |
 | `verify`          | `boolean`             | Forward-verify reverse lookups before trusting them. Defaults to `true`. |
 
 > **Note:** ENS resolution relies on viem's ENS actions, which require a chain with ENS
-> contracts configured (such as `mainnet`). GNS is live at the same address on Ethereum
-> mainnet and Sepolia.
+> contracts configured (such as `mainnet`). GNS and WNS are live on Ethereum mainnet.
 
 ## API
 
@@ -106,20 +110,21 @@ const gnsFirst = createEthereumNames({ reversePriority: ['gns', 'ens'] })
 | ----------------------- | ----------------------------- | ------------------------------------------------------- |
 | `resolve(nameOrAddress)`| `Promise<Address \| null>`    | Name → address. Addresses pass through, checksummed.    |
 | `reverse(address)`      | `Promise<string \| null>`     | Address → primary name across systems.                  |
-| `reverseAll(address)`   | `Promise<ReverseNames>`       | Address → `{ ens, gns }` primary names from both systems.|
+| `reverseAll(address)`   | `Promise<ReverseNames>`       | Address → `{ ens, gns, wns }` primary names from every system.|
 | `lookup(input)`         | `Promise<ResolvedName>`       | Resolve or reverse, with the answering `system`.        |
-| `getAvatar(name)`       | `Promise<string \| null>`     | Avatar record (ENS avatar, or GNS `avatar` text).       |
+| `getAvatar(name)`       | `Promise<string \| null>`     | Avatar record (ENS avatar, or GNS/WNS `avatar` text).   |
 | `getText(name, key)`    | `Promise<string \| null>`     | Arbitrary text record.                                  |
-| `system(name)`          | `'ens' \| 'gns' \| null`      | Offline system detection.                               |
+| `system(name)`          | `'ens' \| 'gns' \| 'wns' \| null` | Offline system detection.                           |
 | `client`                | `PublicClient`                | The underlying viem client.                             |
 
-Also exported: `detectSystem(name)`, `DEFAULT_GNS_CONTRACT`, and the types
-`EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`, `ReverseNames`.
+Also exported: `detectSystem(name)`, `DEFAULT_GNS_CONTRACT`, `DEFAULT_WNS_CONTRACT`, and the
+types `EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`, `ReverseNames`.
 
 ## Credits
 
 GNS resolution builds on [`@donnoh/gns-utils`](https://www.npmjs.com/package/@donnoh/gns-utils)
-by [lucadonnoh](https://github.com/lucadonnoh/gwei-names).
+by [lucadonnoh](https://github.com/lucadonnoh/gwei-names). WNS resolution builds on
+[`wns-utils`](https://www.npmjs.com/package/wns-utils) by [NaniDAO](https://github.com/NaniDAO/wns-utils).
 
 ## License
 
