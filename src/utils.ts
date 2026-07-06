@@ -5,6 +5,7 @@ import type { NameSystem } from './types.js'
  * Detect which name system an input belongs to, purely from its shape — no
  * network calls.
  *
+ * - `*.wei` → `wns`
  * - `*.gwei` and bare labels (no dot) → `gns`
  * - any other dotted name (`*.eth`, `*.box`, …) → `ens`
  * - empty input → `null`
@@ -12,6 +13,7 @@ import type { NameSystem } from './types.js'
 export function detectSystem(input: string): NameSystem | null {
   const value = input.trim().toLowerCase()
   if (!value) return null
+  if (value.endsWith('.wei')) return 'wns'
   if (value.endsWith('.gwei')) return 'gns'
   if (value.includes('.')) return 'ens'
   // A bare label is treated as a `.gwei` name, matching @donnoh/gns-utils.

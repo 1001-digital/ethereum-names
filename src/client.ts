@@ -1,6 +1,7 @@
-import { normalizeName } from '@donnoh/gns-utils'
+import { normalizeName as gnsNormalizeName } from '@donnoh/gns-utils'
 import { http, type Address, createPublicClient, getAddress, isAddress, isAddressEqual } from 'viem'
 import { mainnet } from 'viem/chains'
+import { normalizeName as wnsNormalizeName } from 'wns-utils'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
 import { DEFAULT_GNS_CONTRACT, gnsResolve, gnsReverse, gnsText } from './gns.js'
 import type {
@@ -11,9 +12,10 @@ import type {
   ReverseNames,
 } from './types.js'
 import { detectSystem, safeNormalizeEns } from './utils.js'
+import { DEFAULT_WNS_CONTRACT, wnsResolve, wnsReverse, wnsText } from './wns.js'
 
 /**
- * Create a unified ENS + GNS name client.
+ * Create a unified ENS + GNS + WNS name client.
  *
  * @example
  * ```ts
@@ -23,7 +25,8 @@ import { detectSystem, safeNormalizeEns } from './utils.js'
  *
  * await names.resolve('vitalik.eth')   // ENS  → 0x...
  * await names.resolve('alice.gwei')    // GNS  → 0x...
- * await names.reverse('0xd8dA...')     // → 'vitalik.eth' | 'alice.gwei' | null
+ * await names.resolve('alice.wei')     // WNS  → 0x...
+ * await names.reverse('0xd8dA...')     // → 'vitalik.eth' | 'alice.gwei' | 'alice.wei' | null
  * ```
  *
  * @example
@@ -45,12 +48,14 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
     })
 
   const gnsContract = config.gnsContract ?? DEFAULT_GNS_CONTRACT
-  const reversePriority: NameSystem[] = config.reversePriority ?? ['ens', 'gns']
+  const wnsContract = config.wnsContract ?? DEFAULT_WNS_CONTRACT
+  const reversePriority: NameSystem[] = config.reversePriority ?? ['ens', 'gns', 'wns']
   const verify = config.verify ?? true
 
   /** Canonical form of a name for a given system. */
   function canonical(name: string, system: NameSystem | null): string | null {
-    if (system === 'gns') return normalizeName(name)
+    if (system === 'gns') return gnsNormalizeName(name)
+    if (system === 'wns') return wnsNormalizeName(name)
     if (system === 'ens') return safeNormalizeEns(name)
     return null
   }
@@ -58,6 +63,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
   async function resolveName(name: string, system: NameSystem): Promise<Address | null> {
     try {
       if (system === 'ens') return await ensResolve(client, name)
+      if (system === 'wns') return await wnsResolve(client, wnsContract, name)
       return await gnsResolve(client, gnsContract, name)
     } catch {
       return null
@@ -67,6 +73,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
   async function rawReverse(system: NameSystem, address: Address): Promise<string | null> {
     try {
       if (system === 'ens') return await ensReverse(client, address)
+      if (system === 'wns') return await wnsReverse(client, wnsContract, address)
       return await gnsReverse(client, gnsContract, address)
     } catch {
       return null
@@ -108,13 +115,14 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
     },
 
     async reverseAll(address): Promise<ReverseNames> {
-      if (!isAddress(address)) return { ens: null, gns: null }
+      if (!isAddress(address)) return { ens: null, gns: null, wns: null }
       const checksummed = getAddress(address)
-      const [ens, gns] = await Promise.all([
+      const [ens, gns, wns] = await Promise.all([
         reverseFor('ens', checksummed),
         reverseFor('gns', checksummed),
+        reverseFor('wns', checksummed),
       ])
-      return { ens, gns }
+      return { ens, gns, wns }
     },
 
     async lookup(input): Promise<ResolvedName> {
@@ -138,6 +146,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
       try {
         if (system === 'ens') return await ensAvatar(client, name)
         if (system === 'gns') return await gnsText(client, gnsContract, name, 'avatar')
+        if (system === 'wns') return await wnsText(client, wnsContract, name, 'avatar')
       } catch {
         return null
       }
@@ -149,6 +158,7 @@ export function createEthereumNames(config: EthereumNamesConfig = {}): EthereumN
       try {
         if (system === 'ens') return await ensText(client, name, key)
         if (system === 'gns') return await gnsText(client, gnsContract, name, key)
+        if (system === 'wns') return await wnsText(client, wnsContract, name, key)
       } catch {
         return null
       }

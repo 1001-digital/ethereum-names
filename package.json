@@ -1,7 +1,7 @@
 {
   "name": "@1001-digital/ethereum-names",
   "version": "0.1.0",
-  "description": "One clean API to resolve Ethereum names across ENS and the Gwei Name Service (GNS), powered by viem.",
+  "description": "One clean API to resolve Ethereum names across ENS, the Gwei Name Service (GNS), and the Wei Name Service (WNS), powered by viem.",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -45,6 +45,9 @@
     "gns",
     "gwei",
     "gwei-name-service",
+    "wns",
+    "wei",
+    "wei-name-service",
     "name-service",
     "resolver",
     "viem",
@@ -61,7 +64,8 @@
   },
   "homepage": "https://github.com/1001-digital/ethereum-names#readme",
   "dependencies": {
-    "@donnoh/gns-utils": "^0.2.0"
+    "@donnoh/gns-utils": "^0.2.0",
+    "wns-utils": "^0.2.1"
   },
   "peerDependencies": {
     "viem": "^2.0.0"
@@ -78,6 +82,9 @@
   },
   "packageManager": "pnpm@10.30.0",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "@biomejs/biome"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@biomejs/biome"
+    ]
   }
 }
