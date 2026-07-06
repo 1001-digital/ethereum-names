@@ -1,6 +1,6 @@
 {
   "name": "@1001-digital/ethereum-names",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "One clean API to resolve Ethereum names across ENS, the Gwei Name Service (GNS), and the Wei Name Service (WNS), powered by viem.",
   "type": "module",
   "publishConfig": {
