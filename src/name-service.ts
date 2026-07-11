@@ -1,6 +1,7 @@
 import { type Address, getAddress, isAddressEqual, zeroAddress } from 'viem'
 import type { PublicClient } from 'viem'
 import { readContract } from 'viem/actions'
+import type { NameRegistry } from './types.js'
 
 /**
  * GNS and WNS are ERC-721 name registries with identical read interfaces,
@@ -8,6 +9,10 @@ import { readContract } from 'viem/actions'
  * the shared viem client rather than pulling in a per-service utility library:
  * the addresses are frozen, the token id is derived on-chain by the pure
  * `computeId`, and normalization is a trivial lowercase/trim/suffix.
+ *
+ * Nothing here is GNS- or WNS-specific beyond the two default addresses below —
+ * any registry with the same read surface can be plugged in via the `registries`
+ * config option.
  */
 
 /** The Gwei Name Service registry (`.gwei`). Same address on mainnet and Sepolia. */
@@ -15,7 +20,22 @@ export const DEFAULT_GNS_CONTRACT = '0x9D51D507BC7264d4fE8Ad1cf7Fe191933A0a81d6'
 /** The Wei Name Service registry (`.wei`). */
 export const DEFAULT_WNS_CONTRACT = '0x0000000000696760E15f265e828DB644A0c242EB' as Address
 
-/** The read surface shared by the GNS and WNS registries. */
+/**
+ * The registries resolved against out of the box. Spread this to add your own
+ * without dropping GNS and WNS:
+ *
+ * ```ts
+ * createEthereumNames({
+ *   registries: [...DEFAULT_REGISTRIES, { id: 'foo', suffix: '.foo', contract: '0x…' }],
+ * })
+ * ```
+ */
+export const DEFAULT_REGISTRIES: readonly NameRegistry[] = [
+  { id: 'gns', suffix: '.gwei', contract: DEFAULT_GNS_CONTRACT },
+  { id: 'wns', suffix: '.wei', contract: DEFAULT_WNS_CONTRACT },
+] as const
+
+/** The read surface every registry must expose. */
 const nameServiceAbi = [
   {
     type: 'function',
