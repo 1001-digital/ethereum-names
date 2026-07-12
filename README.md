@@ -58,9 +58,12 @@ names.system('foo.eth')    // 'ens'
 | --------------------------- | ------ |
 | `*.wei`                     | WNS    |
 | `*.gwei`                    | GNS    |
+| any suffix from a custom registry | that registry (see [Custom registries](#custom-registries)) |
 | any other dotted name `*.eth`, `*.box`, … | ENS |
 | bare label (no dot)         | `bareLabel` option (default ENS) |
 | `0x…` address               | passed through (checksummed) |
+
+Suffixes are matched longest-first, so `.gwei` is never mistaken for `.wei`.
 
 A bare label like `alice` is ambiguous — GNS (`.gwei`) and WNS (`.wei`) both accept bare
 labels, and they can point to different owners. Rather than guess, it resolves against the
@@ -104,14 +107,62 @@ await gwei.resolve('alice') // → resolves alice.gwei
 | `client`          | `PublicClient`        | A viem client to read from. Its chain must have ENS contracts.       |
 | `rpcUrl`          | `string`              | RPC endpoint used when no `client` is given.                         |
 | `chain`           | `Chain`               | Chain used when no `client` is given. Defaults to `mainnet`.         |
+| `registries`      | `NameRegistry[]`      | The non-ENS registries to resolve against. Defaults to `DEFAULT_REGISTRIES` (GNS + WNS). |
 | `gnsContract`     | `Address`             | Override the GNS contract address.                                   |
 | `wnsContract`     | `Address`             | Override the WNS contract address.                                   |
-| `bareLabel`       | `'ens' \| 'gns' \| 'wns'` | System a bare label (no dot) resolves against. Defaults to `'ens'`. |
-| `reversePriority` | `('ens' \| 'gns' \| 'wns')[]` | Order reverse lookups try each system. Defaults to `['ens', 'gns', 'wns']`. |
+| `bareLabel`       | `NameSystem`          | System a bare label (no dot) resolves against. Defaults to `'ens'`.  |
+| `reversePriority` | `NameSystem[]`        | Order reverse lookups try each system. Defaults to `'ens'` then each registry — `['ens', 'gns', 'wns']`. |
 | `verify`          | `boolean`             | Forward-verify reverse lookups before trusting them. Defaults to `true`. |
 
 > **Note:** ENS resolution relies on viem's ENS actions, which require a chain with ENS
 > contracts configured (such as `mainnet`). GNS and WNS are live on Ethereum mainnet.
+
+## Custom registries
+
+GNS and WNS are just two instances of the same shape: an on-chain registry exposing
+`computeId(string)`, `resolve(uint256)`, `reverseResolve(address)`, and
+`text(uint256, string)`. Any registry with that read interface can join the resolving path
+— no fork required. Pass it as `registries`, spreading `DEFAULT_REGISTRIES` so you *add* to
+GNS and WNS instead of replacing them:
+
+```ts
+import { createEthereumNames, DEFAULT_REGISTRIES } from '@1001-digital/ethereum-names'
+
+const names = createEthereumNames({
+  registries: [
+    ...DEFAULT_REGISTRIES,
+    { id: 'foo', suffix: '.foo', contract: '0x…' },
+  ],
+})
+
+await names.resolve('alice.foo')     // → '0x…' | null
+names.system('alice.foo')            // → 'foo'
+await names.reverseAll('0xd8dA…')    // → { ens, gns, wns, foo }
+await names.getText('alice.foo', 'url')
+```
+
+The `id` you choose is the name of the system everywhere else: it is what `system()` and
+`lookup()` return, what `reverseAll()` keys the result by, and what you may pass to
+`bareLabel` and `reversePriority`.
+
+```ts
+// Try your registry before ENS on reverse lookups, and treat bare labels as `.foo` names
+createEthereumNames({
+  registries: [...DEFAULT_REGISTRIES, { id: 'foo', suffix: '.foo', contract: '0x…' }],
+  reversePriority: ['foo', 'ens', 'gns', 'wns'],
+  bareLabel: 'foo',
+})
+```
+
+A few rules, enforced at construction (they throw rather than fail silently at resolve
+time): `id` cannot be `'ens'` (reserved) and must be unique; `suffix` must include its
+leading dot. Because `registries` replaces the defaults, omitting the spread is how you opt
+*out* of GNS or WNS. `ens`, `gns`, and `wns` remain present as `null` keys on `reverseAll`
+either way, so existing consumers of that shape keep working.
+
+ENS itself is not pluggable this way — it resolves through viem's universal resolver, which
+already covers every TLD in the ENS root (`.eth`, `.box`, offchain CCIP-read names, …).
+Those work with no configuration at all.
 
 ## API
 
@@ -121,15 +172,16 @@ await gwei.resolve('alice') // → resolves alice.gwei
 | ----------------------- | ----------------------------- | ------------------------------------------------------- |
 | `resolve(nameOrAddress)`| `Promise<Address \| null>`    | Name → address. Addresses pass through, checksummed.    |
 | `reverse(address)`      | `Promise<string \| null>`     | Address → primary name across systems.                  |
-| `reverseAll(address)`   | `Promise<ReverseNames>`       | Address → `{ ens, gns, wns }` primary names from every system.|
+| `reverseAll(address)`   | `Promise<ReverseNames>`       | Address → `{ ens, gns, wns, …registries }` primary names from every system.|
 | `lookup(input)`         | `Promise<ResolvedName>`       | Resolve or reverse, with the answering `system`.        |
-| `getAvatar(name)`       | `Promise<string \| null>`     | Avatar record (ENS avatar, or GNS/WNS `avatar` text).   |
+| `getAvatar(name)`       | `Promise<string \| null>`     | Avatar record (ENS avatar, or the registry's `avatar` text). |
 | `getText(name, key)`    | `Promise<string \| null>`     | Arbitrary text record.                                  |
-| `system(name)`          | `'ens' \| 'gns' \| 'wns' \| null` | Offline system detection.                           |
+| `system(name)`          | `NameSystem \| null`          | Offline system detection.                               |
 | `client`                | `PublicClient`                | The underlying viem client.                             |
 
-Also exported: `detectSystem(name)`, `DEFAULT_GNS_CONTRACT`, `DEFAULT_WNS_CONTRACT`, and the
-types `EthereumNames`, `EthereumNamesConfig`, `NameSystem`, `ResolvedName`, `ReverseNames`.
+Also exported: `detectSystem(name, bareLabel?, registries?)`, `DEFAULT_REGISTRIES`,
+`DEFAULT_GNS_CONTRACT`, `DEFAULT_WNS_CONTRACT`, and the types `EthereumNames`,
+`EthereumNamesConfig`, `NameRegistry`, `NameSystem`, `ResolvedName`, `ReverseNames`.
 
 ## Credits
 
