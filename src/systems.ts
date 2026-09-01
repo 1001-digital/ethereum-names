@@ -86,7 +86,6 @@ export interface ResolvableConfig {
   wnsContract?: Address
   bareLabel?: string
   priority?: readonly string[]
-  reversePriority?: readonly string[]
   collisions?: CollisionStrategy<string>
   verify?: boolean
 }
@@ -104,9 +103,9 @@ export interface ResolvedConfig {
 
 /**
  * Resolve the config into the systems a client knows, applying every default
- * and back-compat shim (`gnsContract`/`wnsContract` overrides, the deprecated
- * `reversePriority` alias) and rejecting anything that can never resolve — at
- * construction, loudly, rather than as a silent `null` later.
+ * and back-compat shim (the `gnsContract`/`wnsContract` overrides) and
+ * rejecting anything that can never resolve — at construction, loudly, rather
+ * than as a silent `null` later.
  */
 export function resolveConfig(config: ResolvableConfig): ResolvedConfig {
   const overrides: Record<string, Address | undefined> = {
@@ -150,7 +149,7 @@ export function resolveConfig(config: ResolvableConfig): ResolvedConfig {
   const descriptors = [...byId.values()]
   const ids = descriptors.map((system) => system.id)
 
-  const priority = [...(config.priority ?? config.reversePriority ?? ids)]
+  const priority = [...(config.priority ?? ids)]
   for (const id of priority) {
     if (!ids.includes(id)) unknownSystem(id, ids, ' in priority')
   }

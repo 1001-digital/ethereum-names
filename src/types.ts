@@ -234,11 +234,6 @@ export interface EthereumNamesConfig<R extends readonly NameRegistry[] = readonl
    */
   priority?: readonly NoInfer<SystemId<R>>[]
   /**
-   * @deprecated Use `priority`, which covers reverse order *and* forward
-   * collision tie-breaking. Still honored when `priority` is not set.
-   */
-  reversePriority?: readonly NoInfer<SystemId<R>>[]
-  /**
    * What to do when one name resolves in several systems. Defaults to `'safe'`
    * — never silently pick. See {@link CollisionStrategy}.
    */

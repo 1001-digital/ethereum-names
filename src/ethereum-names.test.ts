@@ -76,13 +76,6 @@ test('lookup of an address echoes the checksummed address', async () => {
   })
 })
 
-test('the deprecated reversePriority option still works', async () => {
-  const names = createEthereumNames({ reversePriority: [] })
-  const result = await names.lookup(VITALIK.toLowerCase())
-  assert.equal(result.address, VITALIK)
-  assert.deepEqual(result.matches, [])
-})
-
 test('lookup of an unknown shape returns an empty result', async () => {
   const names = createEthereumNames()
   const result = await names.lookup('')

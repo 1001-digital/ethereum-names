@@ -242,7 +242,6 @@ await gwei.resolve('alice') // → resolves alice.gwei
 | `wnsContract` | `Address` | Override the WNS contract address. |
 | `bareLabel` | system id | System a bare label (no dot) resolves against. Defaults to `'ens'`. |
 | `priority` | system id`[]` | Order systems are tried in — reverse lookups, and `collisions: 'priority'`. Defaults to `['ens', …registries]`. |
-| `reversePriority` | system id`[]` | **Deprecated** — use `priority`. Still honored. |
 | `collisions` | `'safe' \| 'priority' \| fn` | What to do when a name resolves in several systems. Defaults to `'safe'`. |
 | `verify` | `boolean` | Forward-verify reverse lookups before trusting them. Defaults to `true`. |
 
