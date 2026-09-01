@@ -1,6 +1,8 @@
 import { type Address, getAddress, isAddressEqual, zeroAddress } from 'viem'
 import type { PublicClient } from 'viem'
 import { readContract } from 'viem/actions'
+import type { NameRegistry } from './types.js'
+import { lower } from './utils.js'
 
 /**
  * GNS and WNS are ERC-721 name registries with identical read interfaces,
@@ -8,6 +10,10 @@ import { readContract } from 'viem/actions'
  * the shared viem client rather than pulling in a per-service utility library:
  * the addresses are frozen, the token id is derived on-chain by the pure
  * `computeId`, and normalization is a trivial lowercase/trim/suffix.
+ *
+ * Nothing here is GNS- or WNS-specific beyond the two default addresses below.
+ * Any registry with the same read surface is just another entry in
+ * {@link DEFAULT_REGISTRIES}, or in the `registries` config option.
  */
 
 /** The Gwei Name Service registry (`.gwei`). Same address on mainnet and Sepolia. */
@@ -15,8 +21,37 @@ export const DEFAULT_GNS_CONTRACT = '0x9D51D507BC7264d4fE8Ad1cf7Fe191933A0a81d6'
 /** The Wei Name Service registry (`.wei`). */
 export const DEFAULT_WNS_CONTRACT = '0x0000000000696760E15f265e828DB644A0c242EB' as Address
 
-/** The read surface shared by the GNS and WNS registries. */
-const nameServiceAbi = [
+/**
+ * The registries resolved against out of the box. Spread this to add your own
+ * without dropping GNS and WNS:
+ *
+ * ```ts
+ * createEthereumNames({
+ *   registries: [...DEFAULT_REGISTRIES, { id: 'foo', suffixes: ['.foo'], contract: '0x…' }],
+ * })
+ * ```
+ */
+export const DEFAULT_REGISTRIES = [
+  {
+    id: 'gns',
+    contract: DEFAULT_GNS_CONTRACT,
+    suffixes: ['.gwei'],
+    bareLabels: true,
+    label: 'Gwei Name Service',
+    url: 'https://gwei.domains',
+  },
+  {
+    id: 'wns',
+    contract: DEFAULT_WNS_CONTRACT,
+    suffixes: ['.wei'],
+    bareLabels: true,
+    label: 'Wei Name Service',
+    url: 'https://wei.domains',
+  },
+] as const satisfies readonly NameRegistry[]
+
+/** The read surface every registry must expose. */
+export const nameServiceAbi = [
   {
     type: 'function',
     name: 'computeId',
@@ -50,13 +85,23 @@ const nameServiceAbi = [
   },
 ] as const
 
-/** Normalize a name to its canonical form: lowercase, trimmed, with `suffix`. */
-export function normalizeName(name: string, suffix: string): string {
-  const normalized = name.toLowerCase().trim()
-  return normalized.endsWith(suffix) ? normalized : normalized + suffix
+/**
+ * Normalize a name to the canonical form a registry expects: lowercased and
+ * trimmed, with the registry's primary suffix appended to a bare label.
+ *
+ * A name that already carries one of the registry's suffixes is left alone, and
+ * so is any other dotted name — a registry with permissionless namespaces
+ * (`wildcard`) owns TLDs we cannot enumerate, and one with no suffixes at all
+ * takes bare labels as-is.
+ */
+export function canonicalName(name: string, suffixes: readonly string[]): string {
+  const value = lower(name)
+  if (suffixes.some((suffix) => value.endsWith(suffix))) return value
+  if (value.includes('.')) return value
+  return suffixes[0] ? value + suffixes[0] : value
 }
 
-/** Compute the on-chain token id for a normalized name. */
+/** Compute the on-chain token id for a canonical name. */
 function tokenId(client: PublicClient, contract: Address, fullName: string): Promise<bigint> {
   return readContract(client, {
     address: contract,
@@ -73,10 +118,9 @@ function tokenId(client: PublicClient, contract: Address, fullName: string): Pro
 export async function nsResolve(
   client: PublicClient,
   contract: Address,
-  name: string,
-  suffix: string,
+  fullName: string,
 ): Promise<Address | null> {
-  const id = await tokenId(client, contract, normalizeName(name, suffix))
+  const id = await tokenId(client, contract, fullName)
   if (id === 0n) return null
   const addr = (await readContract(client, {
     address: contract,
@@ -107,11 +151,10 @@ export async function nsReverse(
 export async function nsText(
   client: PublicClient,
   contract: Address,
-  name: string,
+  fullName: string,
   key: string,
-  suffix: string,
 ): Promise<string | null> {
-  const id = await tokenId(client, contract, normalizeName(name, suffix))
+  const id = await tokenId(client, contract, fullName)
   if (id === 0n) return null
   const value = (await readContract(client, {
     address: contract,

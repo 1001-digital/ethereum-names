@@ -1,12 +1,15 @@
 import type { Address, PublicClient } from 'viem'
 import { getEnsAddress, getEnsAvatar, getEnsName, getEnsText } from 'viem/actions'
-import { safeNormalizeEns } from './utils.js'
 
-/** Resolve an ENS name to an address via viem's universal resolver. */
-export async function ensResolve(client: PublicClient, name: string): Promise<Address | null> {
-  const normalized = safeNormalizeEns(name)
-  if (!normalized) return null
-  return getEnsAddress(client, { name: normalized })
+/**
+ * Thin ENS reads over viem's universal resolver. Names arriving here are
+ * already ENSIP-15 normalized — `canonicalFor` in the client is the single
+ * normalization point, mirroring how the registry readers take canonical names.
+ */
+
+/** Resolve a normalized ENS name to an address. */
+export function ensResolve(client: PublicClient, name: string): Promise<Address | null> {
+  return getEnsAddress(client, { name })
 }
 
 /** Reverse resolve an address to its primary ENS name. */
@@ -14,20 +17,12 @@ export function ensReverse(client: PublicClient, address: Address): Promise<stri
   return getEnsName(client, { address })
 }
 
-/** Read the ENS avatar record for a name. */
-export async function ensAvatar(client: PublicClient, name: string): Promise<string | null> {
-  const normalized = safeNormalizeEns(name)
-  if (!normalized) return null
-  return getEnsAvatar(client, { name: normalized })
+/** Read the ENS avatar record for a normalized name. */
+export function ensAvatar(client: PublicClient, name: string): Promise<string | null> {
+  return getEnsAvatar(client, { name })
 }
 
-/** Read an arbitrary ENS text record for a name. */
-export async function ensText(
-  client: PublicClient,
-  name: string,
-  key: string,
-): Promise<string | null> {
-  const normalized = safeNormalizeEns(name)
-  if (!normalized) return null
-  return getEnsText(client, { name: normalized, key })
+/** Read an arbitrary ENS text record for a normalized name. */
+export function ensText(client: PublicClient, name: string, key: string): Promise<string | null> {
+  return getEnsText(client, { name, key })
 }

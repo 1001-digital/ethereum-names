@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createEthereumNames, detectSystem } from './index.js'
+import { DEFAULT_REGISTRIES, createEthereumNames, detectSystem } from './index.js'
 
 const VITALIK = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
+
+/**
+ * The surface that shipped in 0.3.x. Everything here must keep behaving
+ * identically — the collision and evidence work is additive.
+ */
 
 test('detectSystem routes names to the right system', () => {
   assert.equal(detectSystem('vitalik.eth'), 'ens')
@@ -56,19 +61,51 @@ test('reverseAll rejects non-addresses with an empty result', async () => {
 })
 
 test('lookup of an address echoes the checksummed address', async () => {
-  // reversePriority [] skips any network lookups, isolating the address handling
-  const names = createEthereumNames({ reversePriority: [] })
+  // priority [] skips any network lookups, isolating the address handling
+  const names = createEthereumNames({ priority: [] })
   const result = await names.lookup(VITALIK.toLowerCase())
   assert.deepEqual(result, {
     input: VITALIK.toLowerCase(),
     name: null,
     address: VITALIK,
     system: null,
+    status: 'not-found',
+    verified: false,
+    ambiguous: false,
+    matches: [],
   })
+})
+
+test('the deprecated reversePriority option still works', async () => {
+  const names = createEthereumNames({ reversePriority: [] })
+  const result = await names.lookup(VITALIK.toLowerCase())
+  assert.equal(result.address, VITALIK)
+  assert.deepEqual(result.matches, [])
 })
 
 test('lookup of an unknown shape returns an empty result', async () => {
   const names = createEthereumNames()
   const result = await names.lookup('')
-  assert.deepEqual(result, { input: '', name: null, address: null, system: null })
+  assert.deepEqual(result, {
+    input: '',
+    name: null,
+    address: null,
+    system: null,
+    status: 'not-found',
+    verified: false,
+    ambiguous: false,
+    matches: [],
+  })
+})
+
+test('DEFAULT_REGISTRIES describes GNS and WNS', () => {
+  assert.deepEqual(
+    DEFAULT_REGISTRIES.map((registry) => registry.id),
+    ['gns', 'wns'],
+  )
+  const names = createEthereumNames()
+  assert.deepEqual(
+    names.systems().map((system) => system.id),
+    ['ens', 'gns', 'wns'],
+  )
 })
