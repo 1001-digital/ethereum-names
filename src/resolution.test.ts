@@ -35,10 +35,56 @@ test('a name resolves through its registry', async () => {
   assert.equal(await names.resolve('alice.gwei'), ALICE)
   assert.equal(await names.resolve('ALICE.GWEI'), ALICE)
   assert.equal(await names.resolve('nobody.gwei'), null)
-  // one candidate means one system is asked — no cost added by collision handling
+  // one candidate means one system is asked — no cost added by collision
+  // handling — and the second read of `alice.gwei` reuses its memoized id,
+  // while the unknown name (id 0, mutable registry state) is asked again
   assert.deepEqual(
     log.calls.map((call) => call.function),
-    ['computeId', 'resolve', 'computeId', 'resolve', 'computeId'],
+    ['computeId', 'resolve', 'resolve', 'computeId'],
+  )
+})
+
+test('a repeat read of the same name skips the computeId round-trip', async () => {
+  const { client, log } = fakeClient({
+    [DEFAULT_GNS_CONTRACT]: {
+      names: { 'alice.gwei': ALICE },
+      text: { 'alice.gwei': { url: 'https://alice.example' } },
+      zeroForUnknown: true,
+    },
+  })
+  const names = createEthereumNames({ client })
+
+  assert.equal(await names.resolve('alice.gwei'), ALICE)
+  assert.equal(await names.resolve('alice.gwei'), ALICE)
+  assert.equal(await names.getText('alice.gwei', 'url'), 'https://alice.example')
+  // the id is computed once; the repeat resolve and the text read reuse it
+  assert.deepEqual(
+    log.calls.map((call) => call.function),
+    ['computeId', 'resolve', 'resolve', 'text'],
+  )
+})
+
+test('an unregistered name is never cached — its id 0 is registry state, not a hash', async () => {
+  const { client, log } = gnsOnly()
+  const names = createEthereumNames({ client })
+
+  assert.equal(await names.resolve('nobody.gwei'), null)
+  assert.equal(await names.resolve('nobody.gwei'), null)
+  // GNS answers id 0 until the name is registered, so both reads must ask
+  assert.deepEqual(
+    log.calls.map((call) => call.function),
+    ['computeId', 'computeId'],
+  )
+})
+
+test('the id memo is per client instance, not shared across clients', async () => {
+  const { client, log } = gnsOnly()
+  assert.equal(await createEthereumNames({ client }).resolve('alice.gwei'), ALICE)
+  assert.equal(await createEthereumNames({ client }).resolve('alice.gwei'), ALICE)
+  // two clients, two memos: each pays for its own computeId
+  assert.deepEqual(
+    log.calls.map((call) => call.function),
+    ['computeId', 'resolve', 'computeId', 'resolve'],
   )
 })
 

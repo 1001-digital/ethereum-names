@@ -101,14 +101,50 @@ export function canonicalName(name: string, suffixes: readonly string[]): string
   return suffixes[0] ? value + suffixes[0] : value
 }
 
-/** Compute the on-chain token id for a canonical name. */
-function tokenId(client: PublicClient, contract: Address, fullName: string): Promise<bigint> {
-  return readContract(client, {
+/** How many computed ids a client remembers; past this the oldest entry is dropped. */
+const ID_CACHE_LIMIT = 1000
+
+/**
+ * A per-client memo of computed token ids, keyed by contract and canonical
+ * name. A non-zero id is stable forever — `computeId` is pure — so a repeat
+ * read of the same name (a `lookup()` followed by a `getText()`, say) can skip
+ * the round-trip. GNS answers id `0` for names it has never seen, and a later
+ * registration turns that into a real id: zero is registry state, not a hash,
+ * and is never cached. One memo per client — a module-global would bleed ids
+ * across clients pointed at different chains.
+ */
+export type IdCache = Map<string, bigint>
+
+/** A fresh, empty id memo. Create one per client — see {@link IdCache}. */
+export function createIdCache(): IdCache {
+  return new Map()
+}
+
+/** Compute the on-chain token id for a canonical name, memoized when a cache is supplied. */
+async function tokenId(
+  client: PublicClient,
+  contract: Address,
+  fullName: string,
+  cache?: IdCache,
+): Promise<bigint> {
+  const key = `${contract.toLowerCase()}:${fullName}`
+  const cached = cache?.get(key)
+  if (cached !== undefined) return cached
+  const id = (await readContract(client, {
     address: contract,
     abi: nameServiceAbi,
     functionName: 'computeId',
     args: [fullName],
-  }) as Promise<bigint>
+  })) as bigint
+  if (cache && id !== 0n) {
+    // Names are user-typed input, so the memo is bounded: full means the oldest goes.
+    if (cache.size >= ID_CACHE_LIMIT) {
+      const oldest = cache.keys().next().value
+      if (oldest) cache.delete(oldest)
+    }
+    cache.set(key, id)
+  }
+  return id
 }
 
 /**
@@ -119,8 +155,9 @@ export async function nsResolve(
   client: PublicClient,
   contract: Address,
   fullName: string,
+  cache?: IdCache,
 ): Promise<Address | null> {
-  const id = await tokenId(client, contract, fullName)
+  const id = await tokenId(client, contract, fullName, cache)
   if (id === 0n) return null
   const addr = (await readContract(client, {
     address: contract,
@@ -153,8 +190,9 @@ export async function nsText(
   contract: Address,
   fullName: string,
   key: string,
+  cache?: IdCache,
 ): Promise<string | null> {
-  const id = await tokenId(client, contract, fullName)
+  const id = await tokenId(client, contract, fullName, cache)
   if (id === 0n) return null
   const value = (await readContract(client, {
     address: contract,

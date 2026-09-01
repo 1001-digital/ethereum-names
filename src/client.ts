@@ -2,7 +2,14 @@ import { http, type Address, createPublicClient, getAddress, isAddress, isAddres
 import type { PublicClient } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
-import { DEFAULT_REGISTRIES, canonicalName, nsResolve, nsReverse, nsText } from './name-service.js'
+import {
+  DEFAULT_REGISTRIES,
+  canonicalName,
+  createIdCache,
+  nsResolve,
+  nsReverse,
+  nsText,
+} from './name-service.js'
 import { detectSystemsIn, preferredSystemIn, resolutionCandidatesIn } from './routing.js'
 import { type BuiltSystem, type ResolvableConfig, resolveConfig, unknownSystem } from './systems.js'
 import type {
@@ -117,6 +124,10 @@ export function createEthereumNames<
       transport: http(config.rpcUrl),
     })
 
+  // Token ids memoized for this client — repeat registry reads of a name skip
+  // the on-chain `computeId` round-trip. See `IdCache` in name-service.ts.
+  const ids = createIdCache()
+
   // The id inference is erased here and restored at the public boundary below.
   const { descriptors, byId, priority, bareLabel, verify, collisions } = resolveConfig({
     ...config,
@@ -142,7 +153,7 @@ export function createEthereumNames<
   /** Resolve an already-canonical name in exactly one system, with no error swallowing. */
   function forwardIn(system: BuiltSystem, canonical: string): Promise<Address | null> {
     if (system.kind === 'ens') return ensResolve(client, canonical)
-    return nsResolve(client, system.contract, canonical)
+    return nsResolve(client, system.contract, canonical, ids)
   }
 
   async function forwardMatch(system: BuiltSystem, name: string): Promise<Match> {
@@ -257,7 +268,7 @@ export function createEthereumNames<
     if (!canonical) return null
     try {
       if (system.kind === 'ens') return await viaEns(client, canonical, key)
-      return await nsText(client, system.contract, canonical, key)
+      return await nsText(client, system.contract, canonical, key, ids)
     } catch {
       return null
     }
