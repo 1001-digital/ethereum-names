@@ -1,5 +1,15 @@
 # @1001-digital/ethereum-names
 
+## 0.5.0
+
+### Minor Changes
+
+- [#7](https://github.com/1001-digital/ethereum-names/pull/7) [`bd1efbe`](https://github.com/1001-digital/ethereum-names/commit/bd1efbe43181be689eb4d4b951320e1673de0161) Thanks [@jwahdatehagh](https://github.com/jwahdatehagh)! - **Breaking:** remove the deprecated `reversePriority` option, superseded by `priority` in `0.4.0`. Migration: rename `reversePriority` to `priority` — same shape, and it also breaks forward collision ties.
+
+### Patch Changes
+
+- [#8](https://github.com/1001-digital/ethereum-names/pull/8) [`7661c65`](https://github.com/1001-digital/ethereum-names/commit/7661c651c9c0a3af25df4b5c50678934a2574ea8) Thanks [@jwahdatehagh](https://github.com/jwahdatehagh)! - Memoize `computeId` per client: repeat registry reads of the same canonical name — a `lookup()` followed by a `getText()`, or resolving a name twice — now reuse the token id instead of paying the on-chain round-trip again. Only non-zero ids are cached (GNS answers `0` for unregistered names, which can change once the name is registered), and the memo is bounded and scoped to each client instance.
+
 ## 0.4.0
 
 ### Minor Changes
