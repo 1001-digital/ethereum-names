@@ -1,5 +1,11 @@
 # @1001-digital/ethereum-names
 
+## 0.6.0
+
+### Minor Changes
+
+- [`99f0095`](https://github.com/1001-digital/ethereum-names/commit/99f0095a69c6647f25a6048172b0f4d1b1817224) Thanks [@jwahdatehagh](https://github.com/jwahdatehagh)! - Add profile-page links: `names.profileUrl(name, system?)` and a standalone `profileUrl(name, bareLabel?, registries?)` build the URL of a name's public profile page on its system's frontend, offline — `vitalik.eth` → `https://app.ens.domains/vitalik.eth`, `alice.gwei` → `https://gwei.domains/#alice`, `alice.wei` → `https://wei.domains/#alice`. Custom registries declare theirs via the new `profileUrl` field — a `{name}`/`{label}` URL template or a function — which is validated at construction and exposed on `SystemDescriptor`. Display data only, same trust caveat as `label` and `url`.
+
 ## 0.5.0
 
 ### Minor Changes
