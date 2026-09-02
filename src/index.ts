@@ -1,5 +1,5 @@
 export { createEthereumNames } from './client.js'
-export { detectSystem, detectSystems } from './routing.js'
+export { detectSystem, detectSystems, profileUrl } from './routing.js'
 export {
   DEFAULT_GNS_CONTRACT,
   DEFAULT_REGISTRIES,
@@ -15,6 +15,7 @@ export type {
   NameMatch,
   NameRegistry,
   NameSystem,
+  ProfileUrl,
   RegistryId,
   ResolutionStatus,
   ResolvedName,

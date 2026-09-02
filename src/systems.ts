@@ -1,7 +1,7 @@
 import { type Address, isAddress } from 'viem'
-import { DEFAULT_REGISTRIES } from './name-service.js'
+import { DEFAULT_REGISTRIES, canonicalName } from './name-service.js'
 import type { CollisionStrategy, NameRegistry, SystemDescriptor } from './types.js'
-import { lower } from './utils.js'
+import { lower, safeNormalizeEns } from './utils.js'
 
 /** A configured registry, its contract required by the type. */
 export type RegistrySystem = SystemDescriptor<string> & { kind: 'registry'; contract: Address }
@@ -25,6 +25,7 @@ export const ENS_DESCRIPTOR: BuiltSystem = {
   kind: 'ens',
   label: 'Ethereum Name Service',
   url: 'https://ens.domains',
+  profileUrl: 'https://app.ens.domains/{name}',
   suffixes: [],
   bareLabels: false,
   wildcard: false,
@@ -60,12 +61,44 @@ export function toDescriptor(registry: NameRegistry): RegistrySystem {
     kind: 'registry',
     label: registry.label ?? id.toUpperCase(),
     url: registry.url,
+    profileUrl: registry.profileUrl,
     suffixes: (registry.suffixes ?? []).map(lower),
     bareLabels: registry.bareLabels === true,
     wildcard: registry.wildcard === true,
     excludeSuffixes: (registry.excludeSuffixes ?? []).map(lower),
     contract: registry.contract,
   }
+}
+
+/**
+ * The canonical form of `name` in one system, or `null` when it is not a valid
+ * name there: ENSIP-15 normalization for ENS; lowercase/trim with the primary
+ * suffix appended to bare labels for registries. The single normalization
+ * point, shared by the client and the standalone helpers.
+ */
+export function canonicalFor(system: BuiltSystem, name: string): string | null {
+  if (system.kind === 'ens') return safeNormalizeEns(name)
+  return canonicalName(name, system.suffixes)
+}
+
+/**
+ * The profile-page URL for an already-canonical name, from the system's
+ * `profileUrl`. A template substitutes `{name}` (the canonical name) and
+ * `{label}` (the name with the longest matching claimed suffix stripped),
+ * URL-encoded; a function receives the canonical name and its return value is
+ * used verbatim.
+ */
+export function buildProfileUrl(system: BuiltSystem, canonical: string): string | null {
+  const { profileUrl } = system
+  if (!profileUrl) return null
+  if (typeof profileUrl === 'function') return profileUrl(canonical)
+  const suffix = system.suffixes
+    .filter((candidate) => canonical.endsWith(candidate) && canonical.length > candidate.length)
+    .sort((a, b) => b.length - a.length)[0]
+  const label = suffix ? canonical.slice(0, -suffix.length) : canonical
+  return profileUrl
+    .replaceAll('{name}', encodeURIComponent(canonical))
+    .replaceAll('{label}', encodeURIComponent(label))
 }
 
 function checkSuffixes(id: string, suffixes: readonly string[], field: string): void {
@@ -141,6 +174,22 @@ export function resolveConfig(config: ResolvableConfig): ResolvedConfig {
     }
     if (registry.suffixes.length === 0 && !registry.wildcard && !registry.bareLabels) {
       fail(`Registry "${id}" claims no names — give it suffixes, or set wildcard/bareLabels.`)
+    }
+
+    const { profileUrl } = registry
+    if (
+      profileUrl !== undefined &&
+      typeof profileUrl !== 'string' &&
+      typeof profileUrl !== 'function'
+    ) {
+      fail(`Registry "${id}" profileUrl must be a URL template or a function.`)
+    }
+    if (
+      typeof profileUrl === 'string' &&
+      !profileUrl.includes('{name}') &&
+      !profileUrl.includes('{label}')
+    ) {
+      fail(`Registry "${id}" profileUrl "${profileUrl}" needs a {name} or {label} placeholder.`)
     }
 
     byId.set(id, { ...registry, contract })

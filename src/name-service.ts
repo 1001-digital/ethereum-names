@@ -39,6 +39,7 @@ export const DEFAULT_REGISTRIES = [
     bareLabels: true,
     label: 'Gwei Name Service',
     url: 'https://gwei.domains',
+    profileUrl: 'https://gwei.domains/#{label}',
   },
   {
     id: 'wns',
@@ -47,6 +48,7 @@ export const DEFAULT_REGISTRIES = [
     bareLabels: true,
     label: 'Wei Name Service',
     url: 'https://wei.domains',
+    profileUrl: 'https://wei.domains/#{label}',
   },
 ] as const satisfies readonly NameRegistry[]
 

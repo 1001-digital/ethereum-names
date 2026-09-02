@@ -54,6 +54,11 @@ await names.getText('alice.wei', 'url')
 // Pure, offline system detection
 names.system('alice.gwei')     // 'gns'
 names.systemsFor('alice.gwei') // ['gns'] — every system claiming this name
+
+// Pure, offline profile links ("view on ENS / GNS / WNS")
+names.profileUrl('vitalik.eth') // 'https://app.ens.domains/vitalik.eth'
+names.profileUrl('alice.gwei')  // 'https://gwei.domains/#alice'
+names.profileUrl('alice.wei')   // 'https://wei.domains/#alice'
 ```
 
 ## How resolution is routed
@@ -165,6 +170,34 @@ names.describe(result.system!)?.label // 'Gwei Name Service'
 > the config. Never render a descriptor as a verification badge — the trust signals are
 > `status`, `verified`, and `ambiguous`. A registry is free to call itself anything.
 
+## Profile links
+
+Every system can declare where a name's public profile page lives, and
+`profileUrl(name)` builds the link offline — no network call — by routing the name exactly
+like resolution does:
+
+```ts
+names.profileUrl('vitalik.eth')        // 'https://app.ens.domains/vitalik.eth'
+names.profileUrl('alice.gwei')         // 'https://gwei.domains/#alice'
+names.profileUrl('alice.wei', 'wns')   // pin the system explicitly, skipping routing
+names.profileUrl('unclaimed.foo')      // ENS fallback → 'https://app.ens.domains/unclaimed.foo'
+```
+
+It returns `null` when nothing claims the name, the name is invalid in its system, or the
+system declares no profile URL. A standalone `profileUrl(name)` export does the same
+against the default registries, for code that never builds a client.
+
+Custom registries declare theirs via the `profileUrl` field — a template where `{name}`
+substitutes the canonical name and `{label}` the name with the matched suffix stripped
+(both URL-encoded), or a function from the canonical name to a full URL:
+
+```ts
+{ id: 'foo', suffixes: ['.foo'], contract: '0x…', profileUrl: 'https://foo.example/#{label}' }
+```
+
+The URL format is a convention of each system's frontend, not part of any on-chain
+contract — display data, with the same trust caveat as `label` and `url`.
+
 ## Custom registries
 
 GNS and WNS are just two instances of the same shape: an on-chain registry exposing
@@ -200,6 +233,7 @@ exactly typed — a typo is a compile error, not a silent `null`.
 | `wildcard` | For permissionless namespaces: claims every dotted name. |
 | `excludeSuffixes` | Suffixes carved out of `wildcard`. |
 | `label`, `url` | Display data for `systems()`. Untrusted — see the note above. |
+| `profileUrl` | Where a name's profile page lives — a `{name}`/`{label}` template, or a function. Untrusted, same caveat. |
 
 Rules enforced at construction, so a bad config throws instead of silently resolving to
 `null`: ids are unique, non-empty and never `'ens'`; contracts must be valid addresses;
@@ -261,6 +295,7 @@ await gwei.resolve('alice') // → resolves alice.gwei
 | `lookup(input)` | `Promise<ResolvedName>` | Resolve or reverse, with `status`, `verified`, `ambiguous` and `matches`. |
 | `getAvatar(name)` | `Promise<string \| null>` | Avatar record (ENS avatar, or the registry's `avatar` text). |
 | `getText(name, key)` | `Promise<string \| null>` | Arbitrary text record. |
+| `profileUrl(name, system?)` | `string \| null` | Offline link to the name's profile page on its system's frontend. |
 | `system(name)` | system id `\| null` | Offline detection — the single preferred system. |
 | `systemsFor(name)` | system id`[]` | Offline detection — every system claiming the name. |
 | `systems()` | `SystemDescriptor[]` | Describe every configured system, for UI. |
@@ -268,11 +303,12 @@ await gwei.resolve('alice') // → resolves alice.gwei
 | `client` | `PublicClient` | The underlying viem client. |
 
 Also exported: `detectSystem(name, bareLabel?, registries?)`,
-`detectSystems(name, registries?)`, `DEFAULT_REGISTRIES`, `DEFAULT_GNS_CONTRACT`,
-`DEFAULT_WNS_CONTRACT`, `RESERVED_SUFFIXES`, and the types `CollisionResolver`,
-`CollisionStrategy`, `EthereumNames`, `EthereumNamesConfig`, `MatchStatus`, `NameMatch`,
-`NameRegistry`, `NameSystem`, `RegistryId`, `ResolutionStatus`, `ResolvedName`,
-`ReverseNames`, `SystemDescriptor`, `SystemId`.
+`detectSystems(name, registries?)`, `profileUrl(name, bareLabel?, registries?)`,
+`DEFAULT_REGISTRIES`, `DEFAULT_GNS_CONTRACT`, `DEFAULT_WNS_CONTRACT`, `RESERVED_SUFFIXES`,
+and the types `CollisionResolver`, `CollisionStrategy`, `EthereumNames`,
+`EthereumNamesConfig`, `MatchStatus`, `NameMatch`, `NameRegistry`, `NameSystem`,
+`ProfileUrl`, `RegistryId`, `ResolutionStatus`, `ResolvedName`, `ReverseNames`,
+`SystemDescriptor`, `SystemId`.
 
 ## Credits
 

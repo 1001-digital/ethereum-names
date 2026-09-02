@@ -2,16 +2,21 @@ import { http, type Address, createPublicClient, getAddress, isAddress, isAddres
 import type { PublicClient } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ensAvatar, ensResolve, ensReverse, ensText } from './ens.js'
+import { DEFAULT_REGISTRIES, createIdCache, nsResolve, nsReverse, nsText } from './name-service.js'
 import {
-  DEFAULT_REGISTRIES,
-  canonicalName,
-  createIdCache,
-  nsResolve,
-  nsReverse,
-  nsText,
-} from './name-service.js'
-import { detectSystemsIn, preferredSystemIn, resolutionCandidatesIn } from './routing.js'
-import { type BuiltSystem, type ResolvableConfig, resolveConfig, unknownSystem } from './systems.js'
+  detectSystemsIn,
+  preferredSystemIn,
+  profileUrlIn,
+  resolutionCandidatesIn,
+} from './routing.js'
+import {
+  type BuiltSystem,
+  type ResolvableConfig,
+  buildProfileUrl,
+  canonicalFor,
+  resolveConfig,
+  unknownSystem,
+} from './systems.js'
 import type {
   EthereumNames,
   EthereumNamesConfig,
@@ -22,7 +27,6 @@ import type {
   SystemDescriptor,
   SystemId,
 } from './types.js'
-import { safeNormalizeEns } from './utils.js'
 
 type Match = NameMatch<string>
 
@@ -139,16 +143,6 @@ export function createEthereumNames<
     const system = byId.get(id)
     return system ? [system] : []
   })
-
-  /**
-   * The canonical form of `name` for one system, or `null` if it is not a valid
-   * name there. The single normalization point — every read below passes the
-   * canonical name onward.
-   */
-  function canonicalFor(system: BuiltSystem, name: string): string | null {
-    if (system.kind === 'ens') return safeNormalizeEns(name)
-    return canonicalName(name, system.suffixes)
-  }
 
   /** Resolve an already-canonical name in exactly one system, with no error swallowing. */
   function forwardIn(system: BuiltSystem, canonical: string): Promise<Address | null> {
@@ -283,6 +277,16 @@ export function createEthereumNames<
 
     systemsFor(name) {
       return detectSystemsIn(name, descriptors) as S[]
+    },
+
+    profileUrl(name, system) {
+      if (system !== undefined) {
+        const descriptor = byId.get(system)
+        if (!descriptor) unknownSystem(system, byId.keys())
+        const canonical = canonicalFor(descriptor, name)
+        return canonical ? buildProfileUrl(descriptor, canonical) : null
+      }
+      return profileUrlIn(name, descriptors, bareLabel, priority)
     },
 
     systems() {

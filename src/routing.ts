@@ -1,5 +1,11 @@
 import { DEFAULT_REGISTRIES } from './name-service.js'
-import { type BuiltSystem, ENS_DESCRIPTOR, toDescriptor } from './systems.js'
+import {
+  type BuiltSystem,
+  ENS_DESCRIPTOR,
+  buildProfileUrl,
+  canonicalFor,
+  toDescriptor,
+} from './systems.js'
 import type { NameRegistry, SystemId } from './types.js'
 import { lower } from './utils.js'
 
@@ -133,6 +139,41 @@ export function detectSystems<const R extends readonly NameRegistry[] = typeof D
   registries: R = DEFAULT_REGISTRIES as unknown as R,
 ): SystemId<R>[] {
   return detectSystemsIn(input, descriptorsFor(registries)) as SystemId<R>[]
+}
+
+/** {@link profileUrl} over already-built descriptors. */
+export function profileUrlIn(
+  input: string,
+  systems: readonly BuiltSystem[],
+  bareLabel: string,
+  priority: readonly string[],
+): string | null {
+  const id = preferredSystemIn(input, systems, bareLabel, priority)
+  const system = systems.find((candidate) => candidate.id === id)
+  if (!system) return null
+  const canonical = canonicalFor(system, input)
+  return canonical ? buildProfileUrl(system, canonical) : null
+}
+
+/**
+ * The URL of a name's public profile page on the system it routes to, purely
+ * from its shape — no network calls.
+ *
+ * - `vitalik.eth` → `https://app.ens.domains/vitalik.eth`
+ * - `alice.gwei`  → `https://gwei.domains/#alice`
+ * - `alice.wei`   → `https://wei.domains/#alice`
+ *
+ * Routing follows {@link detectSystem}, so a bare label goes to `bareLabel`
+ * (default `'ens'`). Returns `null` for empty input, invalid names, and
+ * systems that declare no `profileUrl`. Display data only — the URL format is
+ * a frontend convention, never a trust signal. See {@link ProfileUrl}.
+ */
+export function profileUrl<const R extends readonly NameRegistry[] = typeof DEFAULT_REGISTRIES>(
+  input: string,
+  bareLabel: NoInfer<SystemId<R>> = 'ens' as NoInfer<SystemId<R>>,
+  registries: R = DEFAULT_REGISTRIES as unknown as R,
+): string | null {
+  return profileUrlIn(input, descriptorsFor(registries), bareLabel, [])
 }
 
 /**

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { DEFAULT_REGISTRIES, createEthereumNames, detectSystems } from './index.js'
+import { DEFAULT_REGISTRIES, createEthereumNames, detectSystems, profileUrl } from './index.js'
 import type { NameRegistry } from './index.js'
 
 const CONTRACT = '0x00000000000000000000000000000000000000F0'
@@ -147,6 +147,7 @@ test('descriptors expose what each system claims', () => {
     kind: 'registry',
     label: 'Gwei Name Service',
     url: 'https://gwei.domains',
+    profileUrl: 'https://gwei.domains/#{label}',
     suffixes: ['.gwei'],
     bareLabels: true,
     wildcard: false,
@@ -158,6 +159,67 @@ test('descriptors expose what each system claims', () => {
   assert.equal(names.describe('nope'), undefined)
   // an id with no label falls back to the id itself rather than inventing one
   assert.equal(createEthereumNames({ registries: [FOO] }).describe('foo')?.label, 'FOO')
+})
+
+test("profileUrl builds each system's profile page from the name alone", () => {
+  assert.equal(profileUrl('vitalik.eth'), 'https://app.ens.domains/vitalik.eth')
+  assert.equal(profileUrl('alice.gwei'), 'https://gwei.domains/#alice')
+  assert.equal(profileUrl('alice.wei'), 'https://wei.domains/#alice')
+  // unclaimed dotted names fall back to ENS, like resolution does
+  assert.equal(profileUrl('foo.box'), 'https://app.ens.domains/foo.box')
+  // bare labels follow bareLabel routing — ENS by default, a registry on opt-in
+  assert.equal(profileUrl('alice'), 'https://app.ens.domains/alice')
+  assert.equal(profileUrl('alice', 'gns'), 'https://gwei.domains/#alice')
+  assert.equal(profileUrl(''), null)
+  // an invalid ENS name has no profile page
+  assert.equal(profileUrl('in..valid.eth'), null)
+})
+
+test('profileUrl templates substitute {name} and {label}, URL-encoded', () => {
+  const byName = { ...FOO, profileUrl: 'https://foo.example/name/{name}' } as const
+  assert.equal(profileUrl('alice.foo', 'ens', [byName]), 'https://foo.example/name/alice.foo')
+
+  // {label} strips the longest matching claimed suffix
+  const nested = { ...NESTED, profileUrl: 'https://nested.example/#{label}' } as const
+  assert.equal(profileUrl('alice.bar.foo', 'ens', [nested]), 'https://nested.example/#alice')
+
+  // registry names are not ENSIP-normalized, so encoding has to carry the load
+  assert.equal(
+    profileUrl('a b.foo', 'ens', [{ ...FOO, profileUrl: 'https://foo.example/#{label}' }]),
+    'https://foo.example/#a%20b',
+  )
+
+  // a function receives the canonical name and its answer is used verbatim
+  const fn = {
+    ...FOO,
+    profileUrl: (name: string) => `https://foo.example/profiles?q=${name}`,
+  } as const
+  assert.equal(profileUrl('ALICE.FOO', 'ens', [fn]), 'https://foo.example/profiles?q=alice.foo')
+
+  // no profileUrl, no link
+  assert.equal(profileUrl('alice.foo', 'ens', [FOO]), null)
+})
+
+test('client profileUrl routes like resolution, or targets one system explicitly', () => {
+  const names = createEthereumNames()
+  assert.equal(names.profileUrl('alice.gwei'), 'https://gwei.domains/#alice')
+  assert.equal(names.profileUrl('alice'), 'https://app.ens.domains/alice')
+  assert.equal(
+    createEthereumNames({ bareLabel: 'wns' }).profileUrl('alice'),
+    'https://wei.domains/#alice',
+  )
+  // the explicit system skips routing — canonicalization is that system's,
+  // so a bare label picks up the registry's primary suffix first
+  assert.equal(names.profileUrl('alice', 'wns'), 'https://wei.domains/#alice')
+  assert.equal(names.profileUrl('alice.gwei', 'ens'), 'https://app.ens.domains/alice.gwei')
+  assert.throws(() => names.profileUrl('alice', 'nope' as never), /unknown system "nope"/i)
+})
+
+test('a profileUrl template without a placeholder is rejected at construction', () => {
+  assert.throws(
+    () => createEthereumNames({ registries: [{ ...FOO, profileUrl: 'https://foo.example' }] }),
+    /needs a \{name\} or \{label\} placeholder/i,
+  )
 })
 
 test('gnsContract and wnsContract still override the default addresses', () => {

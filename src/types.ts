@@ -7,6 +7,22 @@ import type { Address, Chain, PublicClient } from 'viem'
  */
 export type NameSystem = 'ens' | 'gns' | 'wns'
 
+/**
+ * Where a name's public profile page lives on a system's own frontend, for
+ * "view on <system>" links.
+ *
+ * Either a URL template — `{name}` substitutes the canonical name
+ * (`alice.gwei`) and `{label}` the name with the system's matched suffix
+ * stripped (`alice`), both URL-encoded — or a function from the canonical name
+ * to a full URL, used verbatim.
+ *
+ * **Display data only** — it comes from whoever wrote the config, and the URL
+ * format is a convention of that system's frontend, not part of any on-chain
+ * contract. Same trust caveat as `label` and `url`: never render it as a
+ * verification signal.
+ */
+export type ProfileUrl = string | ((name: string) => string)
+
 /** The ids of a registry list, as literal types. */
 export type RegistryId<R> = R extends readonly { readonly id: infer I }[]
   ? I extends string
@@ -56,6 +72,11 @@ export interface NameRegistry {
   readonly label?: string
   /** Homepage for the system, for UI. Display data only, same caveat as `label`. */
   readonly url?: string
+  /**
+   * Where a name's profile page lives, for UI links
+   * (e.g. `'https://gwei.domains/#{label}'`). See {@link ProfileUrl}.
+   */
+  readonly profileUrl?: ProfileUrl
 }
 
 /**
@@ -78,6 +99,8 @@ export interface SystemDescriptor<S extends string = NameSystem> {
   readonly label: string
   /** Homepage. Untrusted — see the note above. */
   readonly url?: string
+  /** Where a name's profile page lives. Untrusted — see the note above, and {@link ProfileUrl}. */
+  readonly profileUrl?: ProfileUrl
   /** Suffixes this system claims. Empty for ENS, which is the fallback for any unclaimed dotted name. */
   readonly suffixes: readonly string[]
   /** Whether bare labels resolve here. */
@@ -295,6 +318,14 @@ export interface EthereumNames<S extends string = NameSystem> {
   system(name: string): S | null
   /** Every system that claims `name`, without any network call. More than one means a collision. */
   systemsFor(name: string): S[]
+  /**
+   * The URL of `name`'s public profile page on the system it routes to — or on
+   * `system`, when given — built from that system's `profileUrl` without any
+   * network call. `null` when nothing claims the name, the name is invalid
+   * there, or the system declares no profile URL. Throws if `system` is not
+   * configured. Display data only — see {@link ProfileUrl}.
+   */
+  profileUrl(name: string, system?: S): string | null
   /** Describe every configured system, for UI. See the trust note on {@link SystemDescriptor}. */
   systems(): SystemDescriptor<S>[]
   /** Describe one configured system by id, or `undefined` if it is not configured. */
